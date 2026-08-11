@@ -35,6 +35,30 @@ resource "aws_ecs_task_definition" "backend" {
       name      = "backend"
       image     = var.backend_image
       essential = true
+      environment = [
+        {
+          name  = "DB_HOST"
+          value = var.db_host
+        },
+        {
+          name  = "DB_PORT"
+          value = tostring(var.db_port)
+        },
+        {
+          name  = "DB_NAME"
+          value = var.db_name
+        },
+        {
+          name  = "DB_USER"
+          value = var.db_user
+        }
+      ]
+      secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${var.db_secret_arn}:password::"
+        }
+      ]
       portMappings = [
         {
           containerPort = 5000
@@ -80,6 +104,10 @@ resource "aws_ecs_service" "frontend" {
 
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
+
+  timeouts {
+    delete = "60m"
+  }
 }
 
 resource "aws_ecs_service" "backend" {
@@ -111,6 +139,10 @@ resource "aws_ecs_service" "backend" {
 
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
+
+  timeouts {
+    delete = "60m"
+  }
 }
 
 resource "aws_appautoscaling_target" "frontend" {
@@ -127,6 +159,29 @@ resource "aws_appautoscaling_policy" "frontend" {
   resource_id        = aws_appautoscaling_target.frontend.resource_id
   scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
   service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value = 70
+  }
+}
+
+resource "aws_appautoscaling_target" "backend" {
+  service_namespace  = "ecs"
+  scalable_dimension = "ecs:service:DesiredCount"
+  resource_id        = "service/${var.cluster_id}/${aws_ecs_service.backend.name}"
+  min_capacity       = 1
+  max_capacity       = 10
+}
+
+resource "aws_appautoscaling_policy" "backend" {
+  name               = "backend-cpu"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.backend.resource_id
+  scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.backend.service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {

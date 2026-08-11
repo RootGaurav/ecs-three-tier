@@ -25,3 +25,15 @@ variable "alert_email" {
   description = "Email address for SNS alert subscriptions"
   type        = string
 }
+
+variable "db_name" {
+  description = "Database name used by RDS and ECS services"
+  type        = string
+  default     = "appdb"
+}
+
+variable "db_username" {
+  description = "Database username used by RDS and ECS services"
+  type        = string
+  default     = "postgres"
+}

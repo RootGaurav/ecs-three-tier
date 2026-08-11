@@ -26,7 +26,7 @@ resource "aws_autoscaling_group" "frontend" {
   name = "ecs-frontend-asg"
 
   min_size         = 1
-  desired_capacity = 2
+  desired_capacity = 1
   max_size         = 3
 
   vpc_zone_identifier = var.private_subnets
@@ -41,13 +41,15 @@ resource "aws_autoscaling_group" "frontend" {
     value               = "ecs-frontend-node"
     propagate_at_launch = true
   }
+
+  force_delete = true
 }
 
 resource "aws_autoscaling_group" "backend" {
   name = "ecs-backend-asg"
 
   min_size         = 1
-  desired_capacity = 2
+  desired_capacity = 1
   max_size         = 3
 
   vpc_zone_identifier = var.private_subnets
@@ -62,6 +64,8 @@ resource "aws_autoscaling_group" "backend" {
     value               = "ecs-backend-node"
     propagate_at_launch = true
   }
+
+  force_delete = true
 }
 
 resource "aws_ecs_capacity_provider" "frontend" {
@@ -74,6 +78,8 @@ resource "aws_ecs_capacity_provider" "frontend" {
       status          = "ENABLED"
       target_capacity = 80
     }
+
+    managed_draining = "ENABLED"
   }
 }
 
@@ -87,6 +93,8 @@ resource "aws_ecs_capacity_provider" "backend" {
       status          = "ENABLED"
       target_capacity = 80
     }
+
+    managed_draining = "ENABLED"
   }
 }
 
@@ -99,4 +107,9 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
     capacity_provider = aws_ecs_capacity_provider.frontend.name
     weight            = 1
   }
+
+  depends_on = [
+    aws_ecs_capacity_provider.frontend,
+    aws_ecs_capacity_provider.backend,
+  ]
 }

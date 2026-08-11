@@ -79,4 +79,11 @@ module "ecs_services" {
   backend_sg_id                   = module.security.backend_sg
   frontend_capacity_provider_name = module.ecs_capacity.frontend_capacity_provider_name
   backend_capacity_provider_name  = module.ecs_capacity.backend_capacity_provider_name
+  db_host                         = module.rds.db_host
+  db_port                         = module.rds.db_port
+  db_name                         = var.db_name
+  db_user                         = var.db_username
+  db_secret_arn                   = module.rds.secret_arn
+
+  depends_on = [module.ecs_capacity]
 }

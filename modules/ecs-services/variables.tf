@@ -52,3 +52,28 @@ variable "backend_capacity_provider_name" {
   description = "Capacity provider for backend service"
   type        = string
 }
+
+variable "db_host" {
+  description = "RDS endpoint hostname"
+  type        = string
+}
+
+variable "db_port" {
+  description = "RDS port"
+  type        = number
+}
+
+variable "db_name" {
+  description = "Database name"
+  type        = string
+}
+
+variable "db_user" {
+  description = "Database username"
+  type        = string
+}
+
+variable "db_secret_arn" {
+  description = "Secrets Manager ARN containing the DB password"
+  type        = string
+}
