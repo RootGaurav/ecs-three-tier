@@ -9,3 +9,6 @@ output "frontend_repo_url" {
 output "backend_repo_url" {
   value = module.ecr.backend_repo_url
 }
+output "jenkins_url" {
+  value = module.jenkins.jenkins_url
+}

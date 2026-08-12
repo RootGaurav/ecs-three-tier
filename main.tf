@@ -87,3 +87,12 @@ module "ecs_services" {
 
   depends_on = [module.ecs_capacity]
 }
+
+
+module "jenkins" {
+  source = "./modules/jenkins"
+  public_subnet_id = module.vpc.public_subnets[0]
+  jenkins_sg       = module.security.jenkins_sg
+  key_name         = var.key_name
+  instance_profile = module.iam.ec2_instance_profile
+}
