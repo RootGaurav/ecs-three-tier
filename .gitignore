@@ -38,11 +38,27 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Frontend builds
+frontend/build/
+frontend/dist/
+
+# Backend/runtime artifacts
+backend/node_modules/
+backend/*.log
+backend/tmp/
+
 # Build files
 dist/
 build/
 .next/
 out/
+coverage/
+.cache/
+
+# General temp files
+tmp/
+*.tmp
+*.temp
 
 # Environment / secrets
 .env
