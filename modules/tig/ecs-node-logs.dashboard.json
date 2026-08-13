@@ -1,0 +1,151 @@
+{
+  "id": null,
+  "uid": "ecslogs",
+  "title": "ECS Node Logs",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "instance_id",
+        "label": "Instance",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "query": "SHOW TAG VALUES WITH KEY = \"instance_id\"",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "CPU Usage",
+      "type": "stat",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "query": "SELECT 100 - mean(\"usage_idle\") AS \"cpu_usage\" FROM \"cpu\" WHERE $timeFilter AND \"cpu\" = 'cpu-total' AND \"instance_id\" =~ /^$instance_id$/ GROUP BY time($__interval), \"instance_id\" fill(null)",
+          "resultFormat": "time_series"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Memory Usage",
+      "type": "stat",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "query": "SELECT mean(\"used\") * 100 / mean(\"total\") AS \"memory_usage\" FROM \"mem\" WHERE $timeFilter AND \"instance_id\" =~ /^$instance_id$/ GROUP BY time($__interval), \"instance_id\" fill(null)",
+          "resultFormat": "time_series"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Disk Usage",
+      "type": "stat",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "query": "SELECT mean(\"used_percent\") FROM \"disk\" WHERE $timeFilter AND (\"path\" = '/' OR \"path\" = '/hostfs') AND \"instance_id\" =~ /^$instance_id$/ GROUP BY time($__interval), \"instance_id\" fill(null)",
+          "resultFormat": "time_series"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Logs Over Time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "query": "SELECT COUNT(\"message\") FROM \"ecs_node_log\" WHERE $timeFilter AND \"instance_id\" =~ /^$instance_id$/ GROUP BY time($__interval), \"instance_id\" fill(0)",
+          "resultFormat": "time_series"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Recent Logs",
+      "type": "table",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "query": "SELECT \"message\" FROM \"ecs_node_log\" WHERE $timeFilter AND \"instance_id\" =~ /^$instance_id$/ GROUP BY \"instance_id\", \"private_ip\" LIMIT 100",
+          "resultFormat": "table"
+        }
+      ]
+    }
+  ]
+}

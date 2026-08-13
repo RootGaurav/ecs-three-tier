@@ -184,7 +184,10 @@ resource "aws_security_group" "influxdb" {
     to_port   = 8086
     protocol  = "tcp"
 
-    security_groups = [aws_security_group.grafana.id]
+    security_groups = [
+      aws_security_group.grafana.id,
+      aws_security_group.ecs_nodes.id
+    ]
   }
 
   egress {

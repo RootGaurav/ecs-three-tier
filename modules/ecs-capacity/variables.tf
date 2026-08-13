@@ -17,3 +17,8 @@ variable "private_subnets" {
   description = "Private subnets for the ECS Auto Scaling Group"
   type        = list(string)
 }
+
+variable "influxdb_host" {
+  description = "Hostname or IP of the InfluxDB server for log shipping"
+  type        = string
+}

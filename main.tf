@@ -63,6 +63,7 @@ module "ecs_capacity" {
   instance_profile_arn = module.ecs_iam.instance_profile_arn
   ecs_node_sg          = module.security.ecs_nodes_sg
   private_subnets      = module.vpc.app_subnets
+  influxdb_host        = module.tig.influxdb_ip
 }
 
 module "ecs_services" {
@@ -90,9 +91,17 @@ module "ecs_services" {
 
 
 module "jenkins" {
-  source = "./modules/jenkins"
+  source           = "./modules/jenkins"
   public_subnet_id = module.vpc.public_subnets[0]
   jenkins_sg       = module.security.jenkins_sg
   key_name         = var.key_name
   instance_profile = module.iam.ec2_instance_profile
+}
+module "tig" {
+  source             = "./modules/tig"
+  grafana_subnet_id  = module.vpc.public_subnets[0]
+  influxdb_subnet_id = module.vpc.app_subnets[0]
+  grafana_sg         = module.security.grafana_sg
+  influxdb_sg        = module.security.influxdb_sg
+  instance_profile   = module.iam.ec2_instance_profile
 }

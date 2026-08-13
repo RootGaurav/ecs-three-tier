@@ -1,0 +1,72 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf update -y
+dnf install -y docker
+
+systemctl enable docker
+systemctl start docker
+
+until docker info >/dev/null 2>&1; do
+  sleep 2
+done
+
+for i in {1..60}; do
+  if bash -c "</dev/tcp/${influxdb_host}/8086" >/dev/null 2>&1; then
+    break
+  fi
+
+  if [ "$i" -eq 60 ]; then
+    echo "InfluxDB is not reachable at ${influxdb_host}:8086" >&2
+    exit 1
+  fi
+
+  sleep 5
+done
+
+mkdir -p /etc/grafana/provisioning/datasources
+mkdir -p /etc/grafana/provisioning/dashboards
+mkdir -p /var/lib/grafana/dashboards
+
+cat >/etc/grafana/provisioning/datasources/influxdb.yaml <<EOF
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    uid: influxdb
+    type: influxdb
+    access: proxy
+    url: http://${influxdb_host}:8086
+    database: telegraf
+    isDefault: true
+EOF
+
+cat >/etc/grafana/provisioning/dashboards/dashboards.yaml <<EOF
+apiVersion: 1
+
+providers:
+  - name: default
+    orgId: 1
+    folder: ECS
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 10
+
+    options:
+      path: /var/lib/grafana/dashboards
+EOF
+
+cat >/var/lib/grafana/dashboards/ecs-node-logs.json <<'EOF'
+${ecs_node_logs_dashboard}
+EOF
+
+docker rm -f grafana >/dev/null 2>&1 || true
+
+docker run -d \
+  --name grafana \
+  -p 3000:3000 \
+  -v /etc/grafana/provisioning:/etc/grafana/provisioning \
+  -v /var/lib/grafana/dashboards:/var/lib/grafana/dashboards \
+  --restart unless-stopped \
+  grafana/grafana
