@@ -105,6 +105,15 @@ resource "aws_ecs_service" "frontend" {
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 
+  # FIX: Without depends_on, Terraform's destroy graph tries to delete the
+  # capacity providers while ECS services still hold running tasks. AWS rejects
+  # the deletion and Terraform loops indefinitely. This explicit edge tells
+  # Terraform: destroy services first, then capacity providers.
+  depends_on = [
+    var.frontend_capacity_provider_name,
+    var.backend_capacity_provider_name,
+  ]
+
   timeouts {
     delete = "10m"
   }
@@ -139,6 +148,11 @@ resource "aws_ecs_service" "backend" {
 
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
+
+  depends_on = [
+    var.frontend_capacity_provider_name,
+    var.backend_capacity_provider_name,
+  ]
 
   timeouts {
     delete = "10m"

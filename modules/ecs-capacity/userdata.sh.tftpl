@@ -1,0 +1,95 @@
+#!/bin/bash
+set -euo pipefail
+
+systemctl stop ecs 2>/dev/null || true
+rm -f /var/lib/ecs/data/agent.db 2>/dev/null || true
+
+mkdir -p /etc/ecs
+cat >> /etc/ecs/ecs.config << ECSCONFIG
+ECS_CLUSTER=${cluster_name}
+ECS_ENABLE_CONTAINER_METADATA=true
+ECS_LOGLEVEL=info
+ECSCONFIG
+
+systemctl enable ecs
+systemctl start --no-block ecs
+
+for i in $(seq 1 30); do
+  if curl -sf http://localhost:51678/v1/metadata | tr -d '[:space:]' | grep -q "\"Cluster\":\"${cluster_name}\""; then
+    echo "ECS agent registered successfully."
+    break
+  fi
+  echo "Waiting for ECS agent... attempt $i/30"
+  sleep 5
+done
+
+if ! curl -sf http://localhost:51678/v1/metadata | tr -d '[:space:]' | grep -q "\"Cluster\":\"${cluster_name}\""; then
+  echo "WARNING: ECS agent did not confirm registration within timeout for cluster ${cluster_name}"
+fi
+
+# ---------------------------------------------------------------------------
+# Telegraf for node-level metrics
+# ${cluster_name} and ${influxdb_host} are Terraform template vars (safe).
+# $INSTANCE_ID / $PRIVATE_IP / $AZ are bash vars resolved at runtime (safe
+# because this file is rendered via templatefile(), not inline heredoc, so
+# Terraform never tries to interpolate bare $VAR syntax).
+# ---------------------------------------------------------------------------
+TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+INSTANCE_ID=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/instance-id)
+PRIVATE_IP=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/local-ipv4)
+AZ=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone)
+
+cat > /tmp/telegraf.conf << EOT
+[global_tags]
+  cluster           = "${cluster_name}"
+  instance_id       = "$INSTANCE_ID"
+  private_ip        = "$PRIVATE_IP"
+  availability_zone = "$AZ"
+
+[[inputs.tail]]
+  files          = ["/host/var/log/messages", "/host/var/log/ecs/ecs-agent.log"]
+  from_beginning = false
+  pipe           = false
+  data_format    = "grok"
+  grok_patterns  = ["%%{GREEDYDATA:message}"]
+  name_override  = "ecs_node_log"
+
+[[inputs.cpu]]
+  percpu           = false
+  totalcpu         = true
+  collect_cpu_time = false
+
+[[inputs.mem]]
+
+[[inputs.disk]]
+  ignore_fs    = ["tmpfs", "devtmpfs", "overlay", "squashfs"]
+  mount_points = ["/"]
+
+[[outputs.influxdb]]
+  urls                   = ["http://${influxdb_host}:8086"]
+  database               = "telegraf"
+  skip_database_creation = false
+EOT
+
+docker rm -f telegraf >/dev/null 2>&1 || true
+
+docker run -d \
+  --name telegraf \
+  --restart unless-stopped \
+  -e HOST_ETC=/host/etc \
+  -e HOST_PROC=/host/proc \
+  -e HOST_SYS=/host/sys \
+  -e HOST_VAR=/host/var \
+  -e HOST_MOUNT_PREFIX=/hostfs \
+  -v /tmp/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+  -v /etc:/host/etc:ro \
+  -v /proc:/host/proc:ro \
+  -v /sys:/host/sys:ro \
+  -v /var/log:/host/var/log:ro \
+  -v /:/hostfs:ro \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  telegraf:1.31
