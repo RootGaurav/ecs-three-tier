@@ -4,7 +4,6 @@
 flowchart TB
   user[User]
   dns[DNS]
-  waf[WAF]
   alb[ALB]
 
   subgraph vpc[VPC 10.0.0.0/16]
@@ -46,7 +45,7 @@ flowchart TB
   iam[IAM]
   sm[Secrets Manager]
 
-  user --> dns --> waf --> alb
+  user --> dns --> alb
   alb --> feecs
   alb --> beecs
   feecs --> beecs
@@ -73,7 +72,7 @@ flowchart TB
   classDef svc fill:#eef6ff,stroke:#2b6cb0;
   classDef data fill:#fff5eb,stroke:#c05621;
   class pub1,pub2,app1,app2,db1,db2,mgmt1,mgmt2,igw,nat net;
-  class user,dns,waf,alb,jenkins,grafana,influx,ecsnodes,feasg,beasg,feecs,beecs,iam,sm svc;
+  class user,dns,alb,jenkins,grafana,influx,ecsnodes,feasg,beasg,feecs,beecs,iam,sm svc;
   class rds,ecr data;
 ```
 

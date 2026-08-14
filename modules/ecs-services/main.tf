@@ -106,7 +106,7 @@ resource "aws_ecs_service" "frontend" {
   deployment_maximum_percent         = 200
 
   timeouts {
-    delete = "60m"
+    delete = "10m"
   }
 }
 
@@ -141,7 +141,7 @@ resource "aws_ecs_service" "backend" {
   deployment_maximum_percent         = 200
 
   timeouts {
-    delete = "60m"
+    delete = "10m"
   }
 }
 

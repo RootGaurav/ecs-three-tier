@@ -35,12 +35,6 @@ module "alb" {
   alb_sg         = module.security.alb_sg
 }
 
-module "waf" {
-  source = "./modules/waf"
-
-  resource_arn = module.alb.alb_arn
-}
-
 module "monitoring" {
   source = "./modules/monitoring"
 
